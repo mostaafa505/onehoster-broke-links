@@ -21,7 +21,11 @@ async function startServer() {
     if (!url) return res.status(400).json({ error: 'URL is required' });
     try {
       const { load } = await import('cheerio');
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
       const html = await response.text();
       const $ = load(html);
       const host = new URL(url).hostname;
@@ -116,7 +120,13 @@ async function startServer() {
         const chunk = uniqueAssets.slice(i, i + CONCURRENCY);
         await Promise.all(chunk.map(async (asset: Asset) => {
           try {
-            const fetchRes = await fetch(asset.url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+            const fetchRes = await fetch(asset.url, { 
+              method: 'HEAD', 
+              signal: AbortSignal.timeout(5000),
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+              }
+            });
             if (!fetchRes.ok) {
               brokenLinks.push({
                 sourcePage: url,
@@ -150,35 +160,93 @@ async function startServer() {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'URL is required' });
     try {
+      console.log(`Starting SEO audit for: ${url}`);
       const { load } = await import('cheerio');
       const start = Date.now();
-      const response = await fetch(url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+      
       const ttfb = Date.now() - start;
       const html = await response.text();
       const $ = load(html);
       
-      const title = $('title').text();
-      const description = $('meta[name="description"]').attr('content');
+      const title = $('title').text() || $('meta[property="og:title"]').attr('content') || '';
+      const description = $('meta[name="description"]').attr('content') || $('meta[property="og:description"]').attr('content') || '';
       const h1Count = $('h1').length;
       
       // Lorem Ipsum Detector
-      const text = $('body').text().toLowerCase();
-      const loremIpsum = text.includes('lorem ipsum') || text.includes('dolor sit');
+      const bodyText = $('body').text().toLowerCase();
+      const loremIpsum = bodyText.includes('lorem ipsum') || bodyText.includes('dolor sit amet');
 
       const images: any[] = [];
       let missingAltCount = 0;
-      const imagePromises = $('img').map(async (_, el) => {
-        const src = $(el).attr('src');
+      
+      // Select first 20 images to avoid overwhelming the server
+      const $imgs = $('img').slice(0, 20);
+      
+      const imagePromises = $imgs.map(async (_, el) => {
+        let src = $(el).attr('src');
         const alt = $(el).attr('alt');
+        const dataSrc = $(el).attr('data-src') || $(el).attr('data-lazy') || $(el).attr('data-original');
+        const srcset = $(el).attr('srcset');
+
         if (!alt) missingAltCount++;
+
+        // Handle logical priority: prefer data-src or first srcset item if src is a placeholder/missing
+        if (!src || src.startsWith('data:image') || src.length < 5) {
+          if (dataSrc) {
+            src = dataSrc;
+          } else if (srcset) {
+            // Take the first link from srcset (usually the smallest or first variant)
+            src = srcset.split(',')[0].trim().split(' ')[0];
+          }
+        }
+
         if (!src) return;
-        
-        // Try to get image size
-        let size = 0;
+
+        // Resolve absolute URL
         try {
-            const imgRes = await fetch(new URL(src, url).href, { method: 'HEAD' });
-            size = parseInt(imgRes.headers.get('content-length') || '0');
-        } catch {}
+          src = new URL(src, url).href;
+        } catch {
+          if (!src.startsWith('data:')) return;
+        }
+        
+        // Handle Data URIs size estimation
+        let size = 0;
+        if (src.startsWith('data:')) {
+          // Approximate size from base64 string
+          size = Math.round((src.split(',')[1] || '').length * 0.75);
+          
+          // Skip tiny data URIs (usually placeholders or tiny icons)
+          if (size < 1000 && (src.includes('svg+xml') || src.length < 500)) return;
+        } else {
+          try {
+              // Try HEAD with timeout
+              const imgRes = await fetch(src, { 
+                method: 'HEAD', 
+                signal: AbortSignal.timeout(3000),
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+              });
+              size = parseInt(imgRes.headers.get('content-length') || '0');
+              
+              if (size === 0 && imgRes.ok) {
+                const getRes = await fetch(src, { 
+                  method: 'GET',
+                  signal: AbortSignal.timeout(5000),
+                  headers: { 'Range': 'bytes=0-1024' } // Just check if it's there
+                });
+                size = parseInt(getRes.headers.get('content-length') || '0');
+              }
+          } catch (e) {
+            // Silently fail for size detection
+          }
+        }
 
         let formattedSize = "Unknown";
         if (size > 0) {
@@ -193,10 +261,11 @@ async function startServer() {
           src,
           alt: alt || 'MISSING',
           size: formattedSize,
-          isLarge: size > 500 * 1024 // > 500KB
+          isLarge: size > 800 * 1024 // Adjusted to 800KB for quality audit
         });
       }).get();
-      await Promise.all(imagePromises);
+      
+      await Promise.allSettled(imagePromises);
 
       // SEO Basic Checks
       const seoIssues = [];
@@ -204,45 +273,24 @@ async function startServer() {
       if (!description) seoIssues.push("Missing meta description");
       if (h1Count === 0) seoIssues.push("Missing H1 tag");
       if (h1Count > 1) seoIssues.push("Multiple H1 tags found");
-
-      // Broken Links Check
-      const links = new Set<string>();
-      $('a').each((_, el) => {
-        const href = $(el).attr('href');
-        if (href) {
-            try {
-                const absoluteUrl = new URL(href, url);
-                links.add(absoluteUrl.href);
-            } catch {}
-        }
-      });
-      const linksArray = Array.from(links).slice(0, 10); // Limit to top 10 for performance
-      const brokenLinks: string[] = [];
-      await Promise.all(linksArray.map(async (link) => {
-          try {
-              const res = await fetch(link, { method: 'GET' });
-              if (res.status >= 400) brokenLinks.push(link);
-          } catch { brokenLinks.push(link); }
-      }));
-
-      // Security: SSL check (head request)
+      
       const ssl = url.startsWith('https://');
-
-      // Security: Basic response headers inspection
       const headers = Object.fromEntries(response.headers.entries());
+
+      console.log(`SEO audit completed for: ${url} in ${Date.now() - start}ms`);
 
       res.json({ 
         title, 
         description, 
         h1Count, 
-        images: images.slice(0, 10), 
-        brokenLinks,
+        images: images.slice(0, 15), 
         performance: { ttfb: `${ttfb}ms` },
         security: { ssl, headers },
         content: { loremIpsum, missingAlt: missingAltCount },
         seoIssues
       });
     } catch (e: any) {
+      console.error(`Audit failed for ${url}:`, e);
       res.status(500).json({ error: e.message || 'Audit failed' });
     }
   });
