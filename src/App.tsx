@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { LayoutDashboard, Zap, Search, ShieldCheck, CheckCircle, Download, Share2, Monitor, Layout, Image } from 'lucide-react';
+import { LayoutDashboard, Zap, Search, ShieldCheck, CheckCircle, Download, Share2, Monitor, Layout } from 'lucide-react';
 
 export default function App() {
   const [targetUrl, setTargetUrl] = useState('');
@@ -145,33 +145,33 @@ export default function App() {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
-                        <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Server Speed (TTFB)</p>
-                        <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.performance.ttfb}</p>
-                        <div className="absolute bottom-0 left-0 h-1 bg-primary w-full opacity-20"></div>
-                    </div>
-                    <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
-                        <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">SSL Certificate</p>
-                        <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.security.ssl ? 'Valid ✓' : 'Invalid ✗'}</p>
-                        <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.security.ssl ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    </div>
-                    <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
-                        <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Content Integrity</p>
-                        <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.loremIpsum ? 'Dirty ✗' : 'Professional ✓'}</p>
-                        <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.loremIpsum ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                    </div>
-                    <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
-                        <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Accessibility Tags</p>
-                        <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.missingAlt > 0 ? `${results.seo.content.missingAlt} Missing` : 'Complete ✓'}</p>
-                        <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.missingAlt > 0 ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                    </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Server Speed (TTFB)</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.performance.ttfb}</p>
+                      <div className="absolute bottom-0 left-0 h-1 bg-primary w-full opacity-20"></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">SSL Certificate</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.security.ssl ? 'Valid ✓' : 'Invalid ✗'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.security.ssl ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Content Integrity</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.loremIpsum ? 'Dirty ✗' : 'Professional ✓'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.loremIpsum ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Accessibility Tags</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.missingAlt > 0 ? `${results.seo.content.missingAlt} Missing` : 'Complete ✓'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.missingAlt > 0 ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                  </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* SEO Compliance Summary */}
                   <div className="bg-white/5 p-6 rounded-2xl border border-white/5 h-full">
                       <h3 className="text-sm font-bold mb-6 text-zinc-300 flex items-center justify-between">
-                        <span>SEO & METADATA</span>
+                        <span>SEO COMPLIANCE</span>
                         <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-mono">AUTOMATED</span>
                       </h3>
                       {results.seo.seoIssues && results.seo.seoIssues.length > 0 ? (
@@ -191,11 +191,11 @@ export default function App() {
                       )}
                   </div>
 
-                  {/* ADVANCED BROKEN LINKS SCANNER */}
+                  {/* ADVANCED BROKEN ASSETS SCANNER */}
                   <div className="bg-white/5 p-6 rounded-2xl border border-white/5 h-full col-span-1 md:col-span-2">
                        <h3 className="text-sm font-bold mb-6 text-zinc-300 flex items-center justify-between">
-                        <span>BROKEN LINKS & ASSETS SCANNER</span>
-                        <span className="text-[10px] text-zinc-500 uppercase">Interactive Probe</span>
+                        <span>BROKEN ASSET & LINK SCANNER</span>
+                        <span className="text-[10px] text-zinc-500">REAL-TIME VALIDATION</span>
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                           {results.seo.advancedBrokenLinks && results.seo.advancedBrokenLinks.length > 0 ? (
@@ -227,56 +227,6 @@ export default function App() {
                           )}
                       </div>
                   </div>
-              </div>
-
-              {/* IMAGE ASSET AUDIT */}
-              <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2 uppercase tracking-widest">
-                        <Image size={16} className="text-primary" /> Image Asset Audit
-                    </h3>
-                    <div className="flex gap-2">
-                        <span className="text-[9px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-bold">TOTAL: {results.seo.images.length}</span>
-                        <span className="text-[9px] bg-red-900/20 text-red-400 px-2 py-0.5 rounded font-bold uppercase">Critical fixes: {results.seo.images.filter((img: any) => img.alt === 'MISSING' || img.isLarge).length}</span>
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {results.seo.images.map((img: any, i: number) => (
-                    <div key={i} className="bg-bg-deep border border-white/5 p-4 rounded-xl flex items-start gap-4 hover:border-primary/20 transition-colors group">
-                      <div 
-                        className="w-20 h-20 rounded-lg bg-zinc-800 overflow-hidden shrink-0 border border-white/5 relative cursor-zoom-in"
-                        onClick={() => window.open(img.src, '_blank')}
-                      >
-                        <img src={img.src} alt={img.alt} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                          <Search size={16} className="text-white" />
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1 space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-[9px] text-zinc-500 uppercase font-black tracking-tighter">Image Source Link</p>
-                          <a 
-                            href={img.src} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="text-[11px] text-primary hover:underline font-mono break-all line-clamp-2 block leading-relaxed" 
-                            title={img.src}
-                          >
-                            {img.src}
-                          </a>
-                        </div>
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <span className={`text-[9px] px-2 py-1 rounded font-bold ${img.size === 'Unknown' ? 'bg-zinc-800 text-zinc-500' : (img.isLarge ? 'bg-red-900/20 text-red-400' : 'bg-green-900/20 text-green-400')}`}>
-                            {img.size.toUpperCase()}
-                          </span>
-                          <span className={`text-[9px] px-2 py-1 rounded font-bold ${img.alt === 'MISSING' ? 'bg-red-900/20 text-red-400' : 'bg-green-900/20 text-green-400'}`}>
-                            {img.alt === 'MISSING' ? 'MISSING ALT TAG' : `ALT: "${img.alt}"`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* Responsive Benchmarking */}
