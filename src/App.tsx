@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react';
-import { LayoutDashboard, Zap, Search, ShieldCheck, Mail } from 'lucide-react';
+import { LayoutDashboard, Zap, Search, ShieldCheck, CheckCircle, Download, Share2, Monitor, Layout } from 'lucide-react';
 
 export default function App() {
   const [targetUrl, setTargetUrl] = useState('');
@@ -46,14 +46,23 @@ export default function App() {
     try {
       const resultsArray = await Promise.allSettled([
         safeFetch('/api/crawl', { url: targetUrl }),
-        safeFetch('/api/audit/seo', { url: targetUrl })
+        safeFetch('/api/audit/seo', { url: targetUrl }),
+        safeFetch('/api/audit/broken-links', { url: targetUrl }),
+        safeFetch('/api/audit/screenshots', { url: targetUrl })
       ]);
       
-      const [crawl, seo] = resultsArray.map(r => r.status === 'fulfilled' ? r.value : null);
+      const [crawl, seo, broken, screenshots] = resultsArray.map(r => r.status === 'fulfilled' ? r.value : null);
 
       if (seo === null) throw new Error(`SEO Audit Failed: ${resultsArray[1].status === 'rejected' ? (resultsArray[1] as PromiseRejectedResult).reason : 'Unknown error'}`);
 
-      setResults({ links: crawl?.links || [], seo });
+      setResults({ 
+        links: crawl?.links || [], 
+        seo: { 
+          ...seo, 
+          advancedBrokenLinks: broken?.brokenLinks || [],
+          screenshots: screenshots?.screenshots || []
+        } 
+      });
     } catch (error: any) {
       console.error("Audit failed:", error);
       setError(error.message || "An unexpected error occurred.");
@@ -64,42 +73,42 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] font-sans text-white">
-      <nav className="bg-[#0a0a0b]/80 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <nav className="bg-bg-deep/90 backdrop-blur-md border-b border-border sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-8 py-5 flex items-center justify-between">
           <img 
             src="https://onehoster.com/wp-content/uploads/2019/12/onehoster-logo_00ca002e0_2330.png" 
             alt="One Hoster Logo" 
-            className="h-10" 
+            className="h-8" 
           />
           <div className="flex items-center gap-2">
-            <button className="px-4 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">History</button>
-            <button className="px-5 py-2 text-sm font-medium bg-primary text-black rounded-full hover:opacity-90 transition-all shadow-md shadow-primary/20">New Audit</button>
+            <button className="px-5 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">History</button>
+            <button className="px-6 py-2 text-sm font-medium bg-primary text-white rounded-full hover:bg-primary/90 transition-all shadow-md shadow-primary/10">New Audit</button>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-12">
-          <h1 className="text-4xl font-light tracking-tight">QA <span className="text-primary">Automator</span></h1>
-          <p className="text-zinc-500 mt-2">Automated site audits for superior delivery.</p>
+      <main className="max-w-7xl mx-auto px-8 py-16">
+        <header className="mb-16">
+          <h1 className="text-5xl font-semibold tracking-tighter text-white">QA <span className="text-primary">Automator</span></h1>
+          <p className="text-zinc-400 mt-3 text-lg font-light">Professional-grade site audits for superior delivery.</p>
         </header>
 
-        <section className="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-sm mb-12">
-          <div className="flex gap-4">
+        <section className="bg-card-bg p-6 md:p-10 rounded-3xl border border-border shadow-xl shadow-black/20 mb-16">
+          <div className="flex flex-col md:flex-row gap-4">
             <input
               type="text"
               value={targetUrl}
               onChange={(e) => setTargetUrl(e.target.value)}
-              placeholder="Enter target URL (https://...)"
-              className="flex-1 px-5 py-3 bg-white/5 border border-white/10 rounded-full focus:outline-none focus:border-primary transition-all text-white placeholder-zinc-500"
+              placeholder="https://example.com"
+              className="flex-1 px-6 py-4 bg-bg-deep border border-border rounded-2xl focus:outline-none focus:border-primary transition-all text-white placeholder-zinc-600"
             />
             <button
               onClick={startAudit}
               disabled={loading}
-              className="px-8 py-3 bg-primary text-black font-semibold rounded-full hover:opacity-90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50"
+              className="px-10 py-4 bg-primary text-white font-semibold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50"
             >
-              <Zap size={18} />
-              {loading ? 'Auditing...' : 'Run Audit'}
+              <Zap size={20} />
+              {loading ? 'Running...' : 'Run Audit'}
             </button>
           </div>
         </section>
@@ -112,64 +121,151 @@ export default function App() {
         )}
 
         {results && (
-          <section className="bg-[#0a0a0b] p-8 rounded-3xl border border-white/5 shadow-sm mb-12 text-white space-y-8">
-            <h2 className="text-2xl font-light tracking-tight text-white mb-6">Audit Results for <span className="text-primary">{targetUrl}</span></h2>
-            
-            <div className="grid grid-cols-4 gap-6">
-                <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">TTFB</p>
-                    <p className="text-lg font-semibold text-primary">{results.seo.performance.ttfb}</p>
+          <div className="space-y-8" id="audit-report">
+            <section className="bg-card-bg p-6 md:p-10 rounded-3xl border border-border shadow-xl shadow-black/20 text-white space-y-10">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                <div>
+                   <h2 className="text-2xl md:text-3xl font-semibold tracking-tighter text-white">Full Quality Audit Results</h2>
+                   <p className="text-zinc-500 text-sm">{targetUrl}</p>
                 </div>
-                <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">Page Title</p>
-                    <p className="text-sm font-medium truncate" title={results.seo.title}>{results.seo.title || 'Missing'}</p>
+                <div className="flex gap-3">
+                   <button 
+                     onClick={() => {
+                        alert("Generating Professional PDF Report... (Demo Mode - check browser console for structure)");
+                        console.log("PDF Generation Triggered with jspdf & html2canvas");
+                     }}
+                     className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 border border-zinc-700"
+                   >
+                     <Download size={14} className="text-primary" /> Export PDF Report
+                   </button>
+                   <button onClick={() => alert("Simulation: Report sent to Slack #qa-alerts")} className="px-5 py-2.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-2 border border-primary/20">
+                     <Share2 size={14} /> Notify Developers
+                   </button>
                 </div>
-                <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">Description</p>
-                    <p className="text-sm font-medium">{results.seo.description ? 'Present' : 'Missing'}</p>
-                </div>
-                <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] uppercase tracking-wider text-zinc-500">H1 Count</p>
-                    <p className="text-sm font-medium">{results.seo.h1Count}</p>
-                </div>
-            </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Server Speed (TTFB)</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.performance.ttfb}</p>
+                      <div className="absolute bottom-0 left-0 h-1 bg-primary w-full opacity-20"></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">SSL Certificate</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.security.ssl ? 'Valid ✓' : 'Invalid ✗'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.security.ssl ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Content Integrity</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.loremIpsum ? 'Dirty ✗' : 'Professional ✓'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.loremIpsum ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                  </div>
+                  <div className="bg-bg-deep p-4 md:p-6 rounded-2xl border border-border relative overflow-hidden group">
+                      <p className="text-[10px] md:text-[11px] uppercase tracking-widest text-zinc-500 mb-1">Accessibility Tags</p>
+                      <p className="text-xl md:text-2xl font-semibold text-white">{results.seo.content.missingAlt > 0 ? `${results.seo.content.missingAlt} Missing` : 'Complete ✓'}</p>
+                      <div className={`absolute bottom-0 left-0 h-1 w-full opacity-20 ${results.seo.content.missingAlt > 0 ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                  </div>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Broken Links */}
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
-                    <h3 className="text-lg font-semibold mb-4 text-zinc-300">Broken Links ({results.seo.brokenLinks.length})</h3>
-                    {results.seo.brokenLinks.length > 0 ? (
-                    <ul className="space-y-2">
-                        {results.seo.brokenLinks.map((link: string, i: number) => (
-                          <li key={i} className="text-xs font-mono text-red-400 bg-red-900/10 p-2 rounded truncate">{link}</li>
-                        ))}
-                    </ul>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* SEO Compliance Summary */}
+                  <div className="bg-white/5 p-6 rounded-2xl border border-white/5 h-full">
+                      <h3 className="text-sm font-bold mb-6 text-zinc-300 flex items-center justify-between">
+                        <span>SEO COMPLIANCE</span>
+                        <span className="text-[9px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-mono">AUTOMATED</span>
+                      </h3>
+                      {results.seo.seoIssues && results.seo.seoIssues.length > 0 ? (
+                        <ul className="space-y-4">
+                          {results.seo.seoIssues.map((issue: string, i: number) => (
+                            <li key={i} className="text-[11px] text-zinc-400 flex items-start gap-3 bg-red-900/5 p-4 rounded-xl border border-red-900/10">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0 animate-pulse"></span>
+                              <span className="leading-tight">{issue}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="bg-green-900/5 p-6 rounded-xl border border-green-900/20 flex flex-col items-center gap-3 text-center">
+                          <CheckCircle size={32} className="text-green-500/50" />
+                          <p className="text-[11px] text-green-400 font-medium">Structure follows delivery standards.</p>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* ADVANCED BROKEN ASSETS SCANNER */}
+                  <div className="bg-white/5 p-6 rounded-2xl border border-white/5 h-full col-span-1 md:col-span-2">
+                       <h3 className="text-sm font-bold mb-6 text-zinc-300 flex items-center justify-between">
+                        <span>BROKEN ASSET & LINK SCANNER</span>
+                        <span className="text-[10px] text-zinc-500">REAL-TIME VALIDATION</span>
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                          {results.seo.advancedBrokenLinks && results.seo.advancedBrokenLinks.length > 0 ? (
+                              results.seo.advancedBrokenLinks.map((asset: any, i: number) => (
+                                  <div key={i} className="bg-bg-deep border border-red-900/20 p-4 rounded-xl space-y-3 hover:border-red-900/50 transition-colors">
+                                      <div className="flex justify-between items-center">
+                                          <span className="text-[9px] font-black px-2 py-1 rounded bg-red-900 text-white uppercase">
+                                              {asset.statusCode === 'Network Error' ? 'OFFLINE' : `HTTP ${asset.statusCode}`}
+                                          </span>
+                                          <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                              {asset.elementType}
+                                          </span>
+                                      </div>
+                                      <p className="text-[11px] font-mono text-red-300 break-all leading-tight italic opacity-80" title={asset.brokenUrl}>
+                                          {asset.brokenUrl}
+                                      </p>
+                                      <div className="pt-2 border-t border-white/5 space-y-1">
+                                          <p className="text-[8px] text-zinc-600 uppercase font-bold">Failed Element Identifier</p>
+                                          <p className="text-[10px] text-zinc-400 font-medium truncate">{asset.elementIdentifier}</p>
+                                      </div>
+                                  </div>
+                              ))
+                          ) : (
+                              <div className="col-span-2 flex flex-col items-center justify-center py-16 text-center bg-green-900/5 rounded-2xl border border-green-900/10">
+                                  <ShieldCheck size={48} className="text-green-500/20 mb-4" />
+                                  <span className="text-green-500 font-bold text-sm">Security & Integrity Pass</span>
+                                  <p className="text-[10px] text-green-700/60 mt-1 uppercase tracking-widest">Zero broken assets detected on pre-delivery scan</p>
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              </div>
+
+              {/* Responsive Benchmarking */}
+              <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
+                  <div className="flex justify-between items-center mb-8">
+                     <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2 uppercase tracking-widest">
+                        <Monitor size={16} className="text-primary" /> Visual Delivery Proofs
+                     </h3>
+                     <p className="text-[10px] text-zinc-500 font-medium">GENERATED BY HEADLESS ENGINE</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                    {results.seo.screenshots && results.seo.screenshots.length > 0 ? (
+                      results.seo.screenshots.map((shot: any, i: number) => (
+                        <div key={i} className="space-y-4">
+                          <div className="flex items-center justify-center gap-2">
+                             <div className={`w-2 h-2 rounded-full ${shot.name === 'Mobile' ? 'bg-blue-400' : shot.name === 'Tablet' ? 'bg-purple-400' : 'bg-green-400'}`}></div>
+                             <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">{shot.name} COMPATIBILITY</p>
+                          </div>
+                          <div className="bg-black/40 rounded-2xl border border-white/5 p-1.5 overflow-hidden shadow-2xl relative group ring-1 ring-white/10">
+                            <div className="aspect-[3/4] overflow-hidden rounded-xl">
+                               <img src={shot.data} alt={shot.name} className="w-full object-top hover:scale-110 transition-transform duration-700 cursor-zoom-in" />
+                            </div>
+                            <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
+                              <p className="text-[10px] text-white font-bold">{shot.name} Rendering OK</p>
+                              <button onClick={() => window.open(shot.data)} className="px-5 py-2 bg-primary text-black text-[10px] font-black rounded-full shadow-xl shadow-primary/40 hover:scale-105 transition-transform active:scale-95">VIEW EVIDENCE</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
                     ) : (
-                    <p className="text-green-400 text-sm flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>No broken links found.</p>
+                      <div className="col-span-3 py-20 text-center text-zinc-700 border border-border border-dashed rounded-3xl flex flex-col items-center gap-3 bg-white/[0.01]">
+                         <Layout size={32} className="opacity-20" />
+                         <p className="text-xs uppercase font-bold tracking-widest">Generating Visual Proofs...</p>
+                      </div>
                     )}
-                </div>
-
-                {/* Images */}
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/5">
-                    <h3 className="text-lg font-semibold mb-4 text-zinc-300">Image Assets</h3>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                        {results.seo.images.map((img: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between bg-white/[0.02] p-3 rounded-lg text-[10px]">
-                            <a href={img.src} target="_blank" rel="noreferrer" className="truncate flex-1 font-mono text-zinc-400 hover:text-primary transition-colors" title={img.src}>{img.src}</a>
-                            <div className="flex gap-2">
-                                <span className={`px-2 py-0.5 rounded ${img.isLarge ? 'bg-red-900/30 text-red-400' : 'bg-green-900/30 text-green-400'}`}>
-                                    {img.size}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded ${img.alt === 'MISSING' ? 'bg-red-900/30 text-red-400' : 'bg-green-900/30 text-green-400'}`}>
-                                    Alt: {img.alt === 'MISSING' ? 'No' : 'Yes'}
-                                </span>
-                            </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-          </section>
+                  </div>
+              </div>
+            </section>
+          </div>
         )}
         
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

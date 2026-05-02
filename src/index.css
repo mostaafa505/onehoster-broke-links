@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #36c6f4;
+  --color-primary: #36c6f4; /* Requested professional blue */
+  --color-bg-deep: #050505; /* A richer, deeper black */
+  --color-card-bg: #111111; /* More subtle card background */
+  --color-border: #1f1f1f; /* Stronger, more refined borders */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
