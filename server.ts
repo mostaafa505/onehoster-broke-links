@@ -193,59 +193,36 @@ async function startServer() {
       const imagePromises = $imgs.map(async (_, el) => {
         let src = $(el).attr('src');
         const alt = $(el).attr('alt');
-        const dataSrc = $(el).attr('data-src') || $(el).attr('data-lazy') || $(el).attr('data-original');
-        const srcset = $(el).attr('srcset');
-
         if (!alt) missingAltCount++;
-
-        // Handle logical priority: prefer data-src or first srcset item if src is a placeholder/missing
-        if (!src || src.startsWith('data:image') || src.length < 5) {
-          if (dataSrc) {
-            src = dataSrc;
-          } else if (srcset) {
-            // Take the first link from srcset (usually the smallest or first variant)
-            src = srcset.split(',')[0].trim().split(' ')[0];
-          }
-        }
-
         if (!src) return;
 
         // Resolve absolute URL
         try {
           src = new URL(src, url).href;
         } catch {
-          if (!src.startsWith('data:')) return;
+          return;
         }
         
-        // Handle Data URIs size estimation
         let size = 0;
-        if (src.startsWith('data:')) {
-          // Approximate size from base64 string
-          size = Math.round((src.split(',')[1] || '').length * 0.75);
-          
-          // Skip tiny data URIs (usually placeholders or tiny icons)
-          if (size < 1000 && (src.includes('svg+xml') || src.length < 500)) return;
-        } else {
-          try {
-              // Try HEAD with timeout
-              const imgRes = await fetch(src, { 
-                method: 'HEAD', 
-                signal: AbortSignal.timeout(3000),
-                headers: { 'User-Agent': 'Mozilla/5.0' }
+        try {
+            // Try HEAD with timeout
+            const imgRes = await fetch(src, { 
+              method: 'HEAD', 
+              signal: AbortSignal.timeout(3000),
+              headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
+            size = parseInt(imgRes.headers.get('content-length') || '0');
+            
+            if (size === 0 && imgRes.ok) {
+              const getRes = await fetch(src, { 
+                method: 'GET',
+                signal: AbortSignal.timeout(5000),
+                headers: { 'Range': 'bytes=0-1024' } // Just check if it's there
               });
-              size = parseInt(imgRes.headers.get('content-length') || '0');
-              
-              if (size === 0 && imgRes.ok) {
-                const getRes = await fetch(src, { 
-                  method: 'GET',
-                  signal: AbortSignal.timeout(5000),
-                  headers: { 'Range': 'bytes=0-1024' } // Just check if it's there
-                });
-                size = parseInt(getRes.headers.get('content-length') || '0');
-              }
-          } catch (e) {
-            // Silently fail for size detection
-          }
+              size = parseInt(getRes.headers.get('content-length') || '0');
+            }
+        } catch (e) {
+          console.error(`Error fetching image ${src}:`, e);
         }
 
         let formattedSize = "Unknown";
